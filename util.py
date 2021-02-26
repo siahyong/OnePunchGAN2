@@ -3,13 +3,17 @@ from torch import nn
 from PIL import Image
 import numpy as np
 
+# this file is just filled with convenient utility functions
+
+# Weight initialization function
 def weights_init(m):
     if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
         torch.nn.init.normal_(m.weight, 0.0, 0.02)
     if isinstance(m, nn.BatchNorm2d):
         torch.nn.init.normal_(m.weight, 0.0, 0.02)
         torch.nn.init.constant_(m.bias, 0)
-
+        
+# Function to return the generator loss
 def get_gen_loss(gen, disc, real, condition, adv_criterion, recon_criterion, lambda_recon):
     '''
     Return the loss of the generator given inputs.
@@ -41,6 +45,7 @@ def get_gen_loss(gen, disc, real, condition, adv_criterion, recon_criterion, lam
     #### END CODE HERE ####
     return gen_loss
 
+# Visualization function to display the output from the generator. This function was meant to be run in a Colab Notebook, and might not function as intended in a .py setting
 def show_tensor_images(image_tensor, num_images=25, size=(1, 28, 28)):
     '''
     Function for visualizing images: Given a tensor of images, number of images, and
