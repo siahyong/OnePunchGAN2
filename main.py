@@ -74,11 +74,13 @@ device = 'cuda'
 
 ### END CONFIG ###
 
+# Create generator and discriminator
 gen = Generator(input_dim, real_dim).to(device)
 gen_opt = torch.optim.Adam(gen.parameters(), lr=lr)
 disc = Discriminator(input_dim + real_dim).to(device)
 disc_opt = torch.optim.Adam(disc.parameters(), lr=lr)
 
+# Check if we are loading in a pretrained model, otherwise, initialise weights
 if pretrained:
     loaded_state = torch.load(PREVIOUS_STATE)
     gen.load_state_dict(loaded_state["gen"])
@@ -89,11 +91,12 @@ else:
     gen = gen.apply(weights_init)
     disc = disc.apply(weights_init)
 
+# Prepare transform for preprocessing dataset
 transform = transforms.Compose([
     transforms.ToTensor(),
 ])
 
-# Training Function
+# Training Function, trains the generator using data from the training dataset
 def train(save_model=False):
     mean_generator_loss = 0
     mean_discriminator_loss = 0
@@ -195,7 +198,7 @@ def train(save_model=False):
                     }, f"{SAVE_STATE_LOCATION}/{SAVE_NAME}_{cur_step}.pth")
             cur_step += 1
 
-# Testing Function
+# Testing Function, draws a sample from the testing dataset and runs the generator on it
 def test_generator(test_count_limit = 300):
   test_count = 0
   test_mean_gen_loss = 0
@@ -235,12 +238,14 @@ def test_generator(test_count_limit = 300):
       break
   print("Test Set Gen Loss: {}, Test Set Disc Loss: {}".format(test_mean_gen_loss, test_mean_disc_loss))
 
+# Execute training
 if training:
     dataset = torchvision.datasets.ImageFolder('{}'.format(TRAIN_CHUNK_OUTPUT_FOLDER), transform=transform)
     dataset_len = len(dataset)
     train_dataset, val_dataset = torch.utils.data.random_split(dataset, [dataset_len - dataset_len//5, dataset_len//5])
     train(save_model=save_state)
 
+# Execute testing
 if testing:
     test_dataset = torchvision.datasets.ImageFolder('{}'.format(TEST_CHUNK_OUTPUT_FOLDER), transform=transform)
     test_generator()
