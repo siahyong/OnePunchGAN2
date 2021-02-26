@@ -3,6 +3,9 @@ from torch import nn
 from PIL import Image
 import numpy as np
 
+# These are largely the same components and functions that are used in the Pix2Pix notebook provided on Coursera
+
+# Block that reduces the resolution of the image but doubles the number of channels
 class ContractingBlock(nn.Module):
   def __init__(self, input_channels, use_bn=True):
     super(ContractingBlock, self).__init__()
@@ -26,10 +29,12 @@ class ContractingBlock(nn.Module):
     x = self.maxpool(x)
     return x
 
+# Crop function for link layers
 def crop(image, new_shape):
   cropped_image = image[:,:,int((image.shape[2]-new_shape[2])/2):int((image.shape[2]+new_shape[2])/2),int((image.shape[3]-new_shape[3])/2):int((image.shape[3]+new_shape[3])/2)]
   return cropped_image
 
+# Increases the resolution but halves the number of channels, on the upward half of the U-Net Generator
 class ExpandingBlock(nn.Module):
   def __init__(self, input_channels, use_bn = True):
     super(ExpandingBlock, self).__init__()
@@ -57,6 +62,7 @@ class ExpandingBlock(nn.Module):
     x = self.activation(x)
     return x
 
+# Ensures that the number of channels going in and the number of channels going out remains compatible with the rest of the model
 class FeatureMapBlock(nn.Module):
     def __init__(self, input_channels, output_channels):
         super(FeatureMapBlock, self).__init__()
@@ -66,6 +72,7 @@ class FeatureMapBlock(nn.Module):
         x = self.conv(x)
         return x
 
+# Generator, it's just a U-Net
 class Generator(nn.Module):
   def __init__(self, input_channels, output_channels, hidden_channels=64):
     super(Generator, self).__init__()
@@ -94,6 +101,7 @@ class Generator(nn.Module):
     xn = self.downfeature(x8)
     return self.sigmoid(xn)
 
+# Discriminator, Patch-GAN. Uses the same contracting block component that is used in U-Net.
 class Discriminator(nn.Module):
     '''
     Discriminator Class
