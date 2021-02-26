@@ -40,6 +40,7 @@ def image2chunk(FRAME_OUTPUT_FOLDER, folder, image_index, frame_gap = 1):
   chunk_im = Image.fromarray((chunk * 255).astype(np.uint8))
   chunk_im.save('{}/{}/{}.png'.format(CHUNK_OUTPUT_FOLDER, folder, f'{image_index:05}'))
 
+# This bit here iterates through the list of provided subfolders and performs the frame to chunk function on them
 for folder in folders:
     frame_count = len(list(glob.iglob("{}/{}/*.png".format(FRAME_OUTPUT_FOLDER, folder))))
     todo = frame_count - 2*frame_gap
