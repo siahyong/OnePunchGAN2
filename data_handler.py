@@ -72,6 +72,7 @@ def image25chunk(folder,image_index, frame_gap = 1):
   chunk_im = Image.fromarray((chunk * 255).astype(np.uint8))
   chunk_im.save('{}/{}/{}.png'.format(V_Chunk_Storage, folder, f'{image_index:05}'))
 
+# Function that splits files into folders based on parity of their index
 def split_even_odd(folder, image_index):
   source = '{}/{}/{}.png'.format(source_folder, folder, f'{image_index:05}')
   destination = None
@@ -80,7 +81,8 @@ def split_even_odd(folder, image_index):
   else:
     destination = '{}/{}/{}.png'.format(output_odd, folder, f'{((image_index+1)//2):05}')
   shutil.copyfile(source, destination)
-  
+
+# Function that combines the output of DAIN into chunks that can be used for training
 def make_dain_set(image_index, folder):
   even_output = DAIN_output_even
   odd_output = DAIN_output_odd
