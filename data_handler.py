@@ -151,4 +151,6 @@ elif data_type == 4:
       if i%50 == 0:
         print("Completed {} out of {}".format(i, todo))
     print("Finished on folder {}".format(folder))
+else:
+  print("Invalid data task")
   
