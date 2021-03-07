@@ -250,8 +250,9 @@ def train(save_model=False):
                         'disc_opt': disc_opt.state_dict()
                     }, f"{SAVE_STATE_LOCATION}/{SAVE_NAME}_{cur_step}.pth")
             cur_step += 1
-            
-def train2(save_model=False): # Train combined model
+
+# Training function for combined model (base model + refinement model)
+def train2(save_model=False):
     mean_generator_loss = 0
     mean_discriminator_loss = 0
     rn_mean_generator_loss = 0
@@ -354,7 +355,8 @@ def train2(save_model=False): # Train combined model
                     }, f"/content/gdrive/MyDrive/{save_location}/rn_opgan_{cur_step}.pth")
             cur_step += 1
 
-def combo_train(condition, real, val=False, mean_count = None): # Condensor function for mega training
+# Condensor function to make everything neater, particuarly useful for 5-frame chunk
+def combo_train(condition, real, val=False, mean_count = None): 
   ### Update discriminator ###
   disc_opt.zero_grad() # Zero out the gradient before backpropagation
   with torch.no_grad():
@@ -403,7 +405,8 @@ def combo_train(condition, real, val=False, mean_count = None): # Condensor func
   else:
     return disc_loss.item() / display_step, gen_loss.item() / display_step, rn_disc_loss.item() / display_step, rn_gen_loss.item() / display_step, fake, rn_fake
 
-def train3(save_model=False): # Train mega-sized model (3 frames)
+# Training function for mega-sized model (3 frames in between start and end frame)
+def train3(save_model=False): 
     mean_generator_loss = 0
     mean_discriminator_loss = 0
     rn_mean_generator_loss = 0
@@ -578,8 +581,9 @@ def train3(save_model=False): # Train mega-sized model (3 frames)
                         'rn_disc_opt': rn_disc_opt.state_dict()
                     }, f"/content/gdrive/MyDrive/{save_location}/rn_Vopgan_{cur_step}.pth")
             cur_step += 1
-            
-def dain_train(save_model=False): # Train DAIN based model
+
+# Training function for refinement model that uses outputs from DAIN           
+def dain_train(save_model=False): 
     mean_generator_loss = 0
     mean_discriminator_loss = 0
     rn_mean_generator_loss = 0
@@ -761,7 +765,6 @@ if training:
     else:
         print("Invalid training type")
         
-
 # Execute testing
 if testing:
     test_dataset = torchvision.datasets.ImageFolder('{}'.format(TEST_CHUNK_OUTPUT_FOLDER), transform=transform)
