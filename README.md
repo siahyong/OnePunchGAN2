@@ -3,6 +3,8 @@ GANs for Anime Keyframing
 
 NOTE: The Python version is currently untested, as such, I have also uploaded the original Colab Notebook OPGAN.ipynb used to train and test the model for reference, though it is significantly messier. For a Colab notebook version of the code, please refer to the also uploaded OPGAN2.ipynb.
 
+EDIT: With the update to milestone 2, the latest version of the google colab notebook is now OPGAN3.ipynb.
+
 To use the github repo:
 
 data_handler.py
