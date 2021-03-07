@@ -12,8 +12,12 @@ Prepare your data. Unfortunately, the shell command that converts video into fra
 
 Fill in the config data accordingly, and then run data_handler.py, it should produce the required chunks that the model takes in as input.
 
+EDIT: With the update to Milestone 2, please remember to specify the number of the data task that you would like data_handler.py to perform. Additionally, to perform DAIN chunking, you will have to perform data task 3, then use DAIN on the even and odd output folders, followed by data task 4 on DAIN's output. The Github repo containing DAIN can be found at https://github.com/baowenbo/DAIN.
+
 main.py
 Fill in the config section as desired. You can toggle options for training and testing, set the location where the chunks for training and testing are stored, and other parameters to be used. Then, just run main.py and the model should take care of everything for you. There is a chance that the plotting code won't work, if that is the case, I recommend it be commented out. The plotting code will work in google Colab to display output.
+
+EDIT: With the update to Milestone 2, please remember to specify the number of the training task. Unfortunately currently the testing code is only designed for testing the base model (which can be trained using training task 1)
 
 The Colab notebook currently contains experimental code used to save outputs to file.
 
