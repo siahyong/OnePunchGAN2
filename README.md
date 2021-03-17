@@ -1,9 +1,11 @@
 # OnePunchGAN2
 GANs for Anime Keyframing
 
-NOTE: The Python version is currently untested, as such, I have also uploaded the original Colab Notebook OPGAN.ipynb used to train and test the model for reference, though it is significantly messier. For a Colab notebook version of the code, please refer to the also uploaded OPGAN2.ipynb.
+Update 1.2: The Python version has now been tested and works. In the spirit of tradition, I have also uploaded a ipynb with some changes made to it, OPGAN4. However, please note that currently and for the foreseeable future, the python version is the most up-to-date version of the code.
 
-EDIT: With the update to milestone 2, the latest version of the google colab notebook is now OPGAN3.ipynb.
+Update 1.1: With the update to milestone 2, the latest version of the google colab notebook is now OPGAN3.ipynb.
+
+Note: The Python version is currently untested, as such, I have also uploaded the original Colab Notebook OPGAN.ipynb used to train and test the model for reference, though it is significantly messier. For a Colab notebook version of the code, please refer to the also uploaded OPGAN2.ipynb.
 
 To use the github repo:
 
