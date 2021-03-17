@@ -2,6 +2,8 @@ import torch
 from torch import nn
 from PIL import Image
 import numpy as np
+from torchvision.utils import make_grid
+import matplotlib.pyplot as plt
 
 # this file is just filled with convenient utility functions
 

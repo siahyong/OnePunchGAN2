@@ -12,6 +12,7 @@ from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 import torchvision
 from skimage import color
+import glob as glob
 
 ### BEGIN CONFIG ###
 
@@ -21,31 +22,31 @@ recon_criterion = nn.L1Loss()
 lambda_recon = 200
 
 # Bool to load previous saved state (base model)
-pretrained = False
+pretrained = True
 
 # Bool to load previous saved state (refinement model)
-rn_pretrained = False
+rn_pretrained = True
 
 # Filename of previous state for loading base model
-PREVIOUS_STATE_BASE = ''
+PREVIOUS_STATE_BASE = '../teenotters_base_7000.pth'
 
 # Filename of previous state for loading refinement model
-PREVIOUS_STATE_REFINE = ''
+PREVIOUS_STATE_REFINE = '../teenotters_rn_7000.pth'
 
 # Bool for saving of model
 save_state = False
 
 # How many iterations between checkpoints
-CHECKPOINT_FREQ = 2000
+CHECKPOINT_FREQ = 1000
 
 # Folder where .pth checkpoints will be saved
-SAVE_STATE_LOCATION = ''
+SAVE_STATE_LOCATION = '..'
 
 # A cute name for your checkpoints
-SAVE_NAME = 'babyotters'
+SAVE_NAME = 'jojootters'
 
 # The main folder where the chunks for training are saved (please include subfolders or the dataloader will crash)
-TRAIN_CHUNK_OUTPUT_FOLDER = ''
+TRAIN_CHUNK_OUTPUT_FOLDER = '../trainchunks'
 
 # The main folder where the chunks for testing are saved (please include subfolders or the dataloader will crash)
 TEST_CHUNK_OUTPUT_FOLDER = ''
@@ -54,15 +55,17 @@ TEST_CHUNK_OUTPUT_FOLDER = ''
 training = True
 
 # Do testing?
-testing = True
+testing = False
 
 # Number of epochs for training
-n_epochs = 2
+n_epochs = 1
 
 # Don't touch these, odds are your frames are RGB, so leave these as is
 input_dim = 6
 real_dim = 3
 rn_input_dim = 9
+mask_input_dim = 8
+rn_mask_input_dim = 11
 
 # How often should the generator show its work
 display_step = 500
@@ -80,15 +83,20 @@ target_shape = 256
 device = 'cuda'
 
 # How many images to count in validation
-val_count_limit = 100
+val_count_limit = 50
 
-# What kind of training? (1 - base model, 2 - combined model, 3 - large model, 4 - DAIN model)
-train_type = 3
+# What kind of training? (1 - base model, 2 - combined model, 3 - large model, 4 - DAIN model, 5 - mask model)
+train_type = 6
 
 ### END CONFIG ###
 
 # Compatibility stuff
 save_location = SAVE_STATE_LOCATION
+save_rate = CHECKPOINT_FREQ
+
+if train_type == 5:
+    input_dim = mask_input_dim
+    rn_input_dim = rn_mask_input_dim
 
 # Create generator and discriminator
 gen = Generator(input_dim, real_dim).to(device)
@@ -104,7 +112,7 @@ rn_disc_opt = torch.optim.Adam(rn_disc.parameters(), lr=lr)
 
 # Check if we are loading in a pretrained model, otherwise, initialise weights
 if pretrained:
-    loaded_state = torch.load(PREVIOUS_STATE, map_location=torch.device(device))
+    loaded_state = torch.load(PREVIOUS_STATE_BASE, map_location=torch.device(device))
     gen.load_state_dict(loaded_state["gen"])
     gen_opt.load_state_dict(loaded_state["gen_opt"])
     disc.load_state_dict(loaded_state["disc"])
@@ -259,8 +267,8 @@ def train2(save_model=False):
     rn_mean_discriminator_loss = 0
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
-    cur_step = 8000
-    val_count_limit = 100
+    cur_step = 0
+    # val_count_limit = 100
 
     for epoch in range(n_epochs):
         # Dataloader returns the batches
@@ -302,7 +310,15 @@ def train2(save_model=False):
                 show_tensor_images(real, size=(3, 480, 704))
                 show_tensor_images(fake, size=(3, 480, 704))
                 show_tensor_images(rn_fake, size=(3, 480, 704))
-
+                real_arr = np.array(make_grid(real.detach().cpu(), nrow = 5)).squeeze().transpose(1,2,0)
+                real_image = Image.fromarray((real_arr * 255).astype(np.uint8))
+                real_image.save('../trainoutputs/lotters_{}_real.png'.format(f'{cur_step:05}'))
+                fake_arr = np.array(make_grid(fake.detach().cpu(), nrow = 5)).squeeze().transpose(1,2,0)
+                fake_image = Image.fromarray((fake_arr * 255).astype(np.uint8))
+                fake_image.save('../trainoutputs/lotters_{}_fake.png'.format(f'{cur_step:05}')) 
+                rn_fake_arr = np.array(make_grid(rn_fake.detach().cpu(), nrow = 5)).squeeze().transpose(1,2,0)
+                rn_fake_image = Image.fromarray((rn_fake_arr * 255).astype(np.uint8))
+                rn_fake_image.save('../trainoutputs/lotters_{}_rn_fake.png'.format(f'{cur_step:05}'))
                 mean_generator_loss = 0
                 mean_discriminator_loss = 0
                 rn_mean_generator_loss = 0
@@ -347,12 +363,12 @@ def train2(save_model=False):
                         'gen_opt': gen_opt.state_dict(),
                         'disc': disc.state_dict(),
                         'disc_opt': disc_opt.state_dict()
-                    }, f"/content/gdrive/MyDrive/{save_location}/orig_opgan_{cur_step}.pth")
+                    }, f"{save_location}/{SAVE_NAME}_base_{cur_step}.pth")
                     torch.save({'rn_gen': rn_gen.state_dict(),
                         'rn_gen_opt': rn_gen_opt.state_dict(),
                         'rn_disc': rn_disc.state_dict(),
                         'rn_disc_opt': rn_disc_opt.state_dict()
-                    }, f"/content/gdrive/MyDrive/{save_location}/rn_opgan_{cur_step}.pth")
+                    }, f"{save_location}/{SAVE_NAME}_rn_{cur_step}.pth")
             cur_step += 1
 
 # Condensor function to make everything neater, particuarly useful for 5-frame chunk
@@ -414,7 +430,7 @@ def train3(save_model=False):
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
     cur_step = 0
-    val_count_limit = 100
+    # val_count_limit = 100
 
     for epoch in range(n_epochs):
         # Dataloader returns the batches
@@ -709,6 +725,122 @@ def dain_train(save_model=False):
                     }, f"/content/gdrive/MyDrive/{save_location}/Dopgan_{cur_step}.pth")
             cur_step += 1
 
+def mask_train(save_model=False):
+    mean_generator_loss = 0
+    mean_discriminator_loss = 0
+    rn_mean_generator_loss = 0
+    rn_mean_discriminator_loss = 0
+    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
+    cur_step = 2000
+    val_count_limit = 50
+
+    for epoch in range(n_epochs):
+        # Dataloader returns the batches
+        for image, _ in tqdm(train_dataloader):
+            #image_width = image.shape[3]
+            #condition = image[:, :, :, :image_width // 2]
+            #condition = nn.functional.interpolate(condition, size=target_shape)
+            #real = image[:, :, :, image_width // 2:]
+            #real = nn.functional.interpolate(real, size=target_shape)
+
+            image_width = image.shape[3]
+            pre = image[:, :, :, :image_width // 5]
+            post = image[:, :, :, 2*image_width // 5:3*image_width // 5]
+            pre_mask = image[:, 0:1, :, image_width // 5:2*image_width // 5]
+            post_mask = image[:, 0:1, :, 3*image_width // 5:4*image_width // 5]
+            condition = torch.cat((pre, pre_mask, post, post_mask), dim=1)
+            real = image[:, :, :, 4*image_width // 5:]
+
+            cur_batch_size = len(condition)
+            condition = condition.to(device)
+            real = real.to(device)
+
+            dl, gl, rdl, rgl, fake, rn_fake = combo_train(condition, real)
+
+            mean_generator_loss += gl
+            mean_discriminator_loss += dl
+            rn_mean_generator_loss += rgl
+            rn_mean_discriminator_loss += rdl
+
+            ### Visualization code ###
+            if cur_step % display_step == 0:
+                if cur_step > 0:
+                    print(f"Epoch {epoch}: Step {cur_step}: Generator (U-Net) loss: {mean_generator_loss}, Discriminator loss: {mean_discriminator_loss}, R-Generator (U-Net) loss: {rn_mean_generator_loss}, R-Discriminator loss: {rn_mean_discriminator_loss},")
+                    train_gen.append(mean_generator_loss)
+                    train_disc.append(mean_discriminator_loss)
+                    rn_train_gen.append(rn_mean_generator_loss)
+                    rn_train_disc.append(rn_mean_discriminator_loss)
+                else:
+                    print("Pretrained initial state")
+                #show_tensor_images(condition, size=(input_dim, target_shape, target_shape))
+                show_tensor_images(real, size=(3, 480, 704))
+                show_tensor_images(fake, size=(3, 480, 704))
+                show_tensor_images(rn_fake, size=(3, 480, 704))
+                real_arr = np.array(make_grid(real.detach().cpu(), nrow = 5)).squeeze().transpose(1,2,0)
+                real_image = Image.fromarray((real_arr * 255).astype(np.uint8))
+                real_image.save('../trainoutputs/motters_{}_real.png'.format(f'{cur_step:05}'))
+                fake_arr = np.array(make_grid(fake.detach().cpu(), nrow = 5)).squeeze().transpose(1,2,0)
+                fake_image = Image.fromarray((fake_arr * 255).astype(np.uint8))
+                fake_image.save('../trainoutputs/motters_{}_fake.png'.format(f'{cur_step:05}')) 
+                rn_fake_arr = np.array(make_grid(rn_fake.detach().cpu(), nrow = 5)).squeeze().transpose(1,2,0)
+                rn_fake_image = Image.fromarray((rn_fake_arr * 255).astype(np.uint8))
+                rn_fake_image.save('../trainoutputs/motters_{}_rn_fake.png'.format(f'{cur_step:05}'))
+
+                mean_generator_loss = 0
+                mean_discriminator_loss = 0
+                rn_mean_generator_loss = 0
+                rn_mean_discriminator_loss = 0
+
+                val_count = 0
+                val_mean_gen_loss = 0
+                val_mean_disc_loss = 0
+                rn_val_mean_gen_loss = 0
+                rn_val_mean_disc_loss = 0
+                for image, _ in tqdm(val_dataloader):
+                  image_width = image.shape[3]
+                  pre = image[:, :, :, :image_width // 5]
+                  post = image[:, :, :, 2*image_width // 5:3*image_width // 5]
+                  pre_mask = image[:, 0:1, :, image_width // 5:2*image_width // 5]
+                  post_mask = image[:, 0:1, :, 3*image_width // 5:4*image_width // 5]
+                  condition = torch.cat((pre, pre_mask, post, post_mask), dim=1)
+                  real = image[:, :, :, 4*image_width // 5:]
+
+                  cur_batch_size = len(condition)
+                  condition = condition.to(device)
+                  real = real.to(device)
+
+                  dl, gl, rdl, rgl, fake, rn_fake = combo_train(condition, real, val=True, mean_count = val_count_limit)
+
+                  val_mean_gen_loss += gl
+                  val_mean_disc_loss += dl
+                  rn_val_mean_gen_loss += rgl
+                  rn_val_mean_disc_loss += rdl
+                  
+                  val_count += 1
+                  if val_count >= val_count_limit:
+                    break
+                print("Validation Set Gen Loss: {}, Validation Set Disc Loss: {}, Validation Set R-Gen Loss: {}, Validation Set R-Disc Loss: {}".format(val_mean_gen_loss, val_mean_disc_loss, rn_val_mean_gen_loss, rn_val_mean_disc_loss))
+                val_gen.append(val_mean_gen_loss)
+                val_disc.append(val_mean_disc_loss)
+                rn_val_gen.append(rn_val_mean_gen_loss)
+                rn_val_disc.append(rn_val_mean_disc_loss)
+
+                # You can change save_model to True if you'd like to save the model
+            if cur_step % save_rate == 0:
+                if save_model:
+                    torch.save({'gen': gen.state_dict(),
+                        'gen_opt': gen_opt.state_dict(),
+                        'disc': disc.state_dict(),
+                        'disc_opt': disc_opt.state_dict()
+                    }, f"{save_location}/{SAVE_NAME}_base_{cur_step}.pth")
+                    torch.save({'rn_gen': rn_gen.state_dict(),
+                        'rn_gen_opt': rn_gen_opt.state_dict(),
+                        'rn_disc': rn_disc.state_dict(),
+                        'rn_disc_opt': rn_disc_opt.state_dict()
+                    }, f"{save_location}/{SAVE_NAME}_rn_{cur_step}.pth")
+            cur_step += 1
+
 # Testing Function, draws a sample from the testing dataset and runs the generator on it
 def test_generator(test_count_limit = 300):
   test_count = 0
@@ -749,6 +881,56 @@ def test_generator(test_count_limit = 300):
       break
   print("Test Set Gen Loss: {}, Test Set Disc Loss: {}".format(test_mean_gen_loss, test_mean_disc_loss))
 
+# Does what it says, makes frames for the jojo opening, 7 out of 8 frames synthesized
+def make_jojo():
+    frame_count = len(list(glob.iglob("../jojo_frames/jojo/*.png")))
+    indice_count = (frame_count - 1) // 4
+    for i in range(indice_count):
+        print("{} breads eaten out of {}".format(i+1, indice_count))
+        frame1 = np.array(Image.open('../jojo_frames/jojo/{}.png'.format(f'{(4*i + 1):05}')))/255
+        frame2 = np.array(Image.open('../jojo_frames/jojo/{}.png'.format(f'{(4*i + 5):05}')))/255
+
+        frame1 = np.expand_dims(frame1, axis = 0)
+        frame2 = np.expand_dims(frame2, axis = 0)
+        ba = torch.FloatTensor(np.transpose(frame1, (0, 3, 1, 2))).to(device)
+        aa = torch.FloatTensor(np.transpose(frame2, (0, 3, 1, 2))).to(device)
+        mid_con = torch.cat((ba, aa), dim=1)
+        mid_con_m = gen(mid_con).detach()
+        midput = rn_gen(torch.cat((mid_con_m, mid_con), dim=1)).detach()
+
+        first_q = torch.cat((ba, midput), dim=1)
+        first_q_m = gen(first_q).detach()
+        fqput = rn_gen(torch.cat((first_q_m, first_q), dim=1)).detach()
+
+        third_q = torch.cat((midput, aa), dim=1)
+        third_q_m = gen(third_q).detach()
+        tqput = rn_gen(torch.cat((third_q_m, third_q), dim=1)).detach()
+
+        #first_e = torch.cat((ba, fqput), dim=1)
+        #first_e_m = gen(first_e).detach()
+        #fieput = rn_gen(torch.cat((first_e_m, first_e), dim=1)).detach()
+
+        #second_e = torch.cat((fqput, midput), dim=1)
+        #second_e_m = gen(second_e).detach()
+        #seeput = rn_gen(torch.cat((second_e_m, second_e), dim=1)).detach()
+
+        #third_e = torch.cat((midput, tqput), dim=1)
+        #third_e_m = gen(third_e).detach()
+        #theput = rn_gen(torch.cat((third_e_m, third_e), dim=1)).detach()
+
+        #fourth_e = torch.cat((tqput, aa), dim=1)
+        #fourth_e_m = gen(fourth_e).detach()
+        #foeput = rn_gen(torch.cat((fourth_e_m, fourth_e), dim=1)).detach()
+        
+        #frames = [ba, fieput, fqput, seeput, midput, theput, tqput, foeput]
+        frames = [ba, fqput, midput, tqput]
+        count = 1
+        for thing in frames:
+            pre_arr = np.array(thing.cpu()).squeeze().transpose(1,2,0)
+            pre_image = Image.fromarray((pre_arr * 255).astype(np.uint8))
+            pre_image.save('../newer_jojo/{}.png'.format(f'{(4*i + count):05}'))
+            count += 1
+
 # Execute training
 if training:
     dataset = torchvision.datasets.ImageFolder('{}'.format(TRAIN_CHUNK_OUTPUT_FOLDER), transform=transform)
@@ -762,6 +944,10 @@ if training:
         train3(save_model=save_state)
     elif train_type == 4:
         dain_train(save_model=save_state)
+    elif train_type == 5:
+        mask_train(save_model=save_state)
+    elif train_type == 6:
+        make_jojo()
     else:
         print("Invalid training type")
         

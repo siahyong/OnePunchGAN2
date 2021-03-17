@@ -3,6 +3,8 @@ from torch import nn
 from PIL import Image
 import numpy as np
 import glob as glob
+import os
+import shutil
 
 ### BEGIN CONFIG ###
 
@@ -10,20 +12,21 @@ import glob as glob
 INPUT_FILE = ''
 
 # Main folder where generated frames are stored
-FRAME_OUTPUT_FOLDER = ''
+FRAME_OUTPUT_FOLDER = '../test_frames'
 
 # Main folder for generated chunks to be stored
-CHUNK_OUTPUT_FOLDER = ''
+CHUNK_OUTPUT_FOLDER = '../segchunks'
 
 # Gap between frames for training
 frame_gap = 1
 
 # Subfolder names, if you don't have subfolders for your data, just put them all in one subfolder and fill in its name in the array below
-folders = ['default']
+folders = ['a', 'b', 'c1', 'c2']
 
 # Data processing type (1 - regular chunking, 2 - 5-frame chunking, 3 - DAIN splitting for pre-processing, 4 - DAIN chunking with the output from DAIN)
 # To do DAIN processing, you'd run 3, run DAIN seperately on the two folders and their subfolders, then run 4
-data_type = 1
+# Update, new data handling type 5 for preparing chunks including masks
+data_type = 5
 
 # Locations of files for DAIN processing, is a two part process
 source_folder = "CS236G_Project/test_frames" # Source for frames for DAIN processing
@@ -72,6 +75,39 @@ def image25chunk(folder,image_index, frame_gap = 1):
   chunk_im = Image.fromarray((chunk * 255).astype(np.uint8))
   chunk_im.save('{}/{}/{}.png'.format(V_Chunk_Storage, folder, f'{image_index:05}'))
 
+def mask_chunk(folder, image_index, frame_gap = 1):
+  a_name = '{}/{}/{}.png'.format(Frame_Storage, folder, f'{image_index:05}')
+  b_name = '{}/{}/{}.png'.format(Frame_Storage, folder, f'{(image_index + frame_gap):05}')
+  c_name = '{}/{}/{}.png'.format(Frame_Storage, folder, f'{(image_index + 2*frame_gap):05}')
+
+  a = np.array(Image.open(a_name))/255
+  b = np.array(Image.open(b_name))/255
+  c = np.array(Image.open(c_name))/255
+
+  a_mask = np.zeros_like(a)
+  count = 0
+  # print('/content/gdrive/MyDrive/CS236G_Project/segout_frames/{}/{}_mask_{}.png'.format(folder, f'{image_index:05}', count))
+  while os.path.isfile('../segout_frames/{}/{}_mask_{}.png'.format(folder, f'{image_index:05}', count)):
+    addon = np.array(Image.open('../segout_frames/{}/{}_mask_{}.png'.format(folder, f'{image_index:05}', count)).resize((704, 480)))/255
+    a_mask[:,:,0] = np.maximum(a_mask[:,:,0], addon)
+    count += 1
+
+  c_mask = np.zeros_like(c)
+  count = 0
+  # print('/content/gdrive/MyDrive/CS236G_Project/segout_frames/{}/{}_mask_{}.png'.format(folder, f'{image_index + 2*frame_gap:05}', count))
+  while os.path.isfile('../segout_frames/{}/{}_mask_{}.png'.format(folder, f'{image_index + 2*frame_gap:05}', count)):
+    addon = np.array(Image.open('../segout_frames/{}/{}_mask_{}.png'.format(folder, f'{image_index + 2*frame_gap:05}', count)).resize((704, 480)))/255
+    c_mask[:,:,0] = np.maximum(c_mask[:,:,0], addon)
+    count += 1
+
+  #plt.imshow(a_mask, interpolation='nearest')
+  #plt.show()
+  chunk = np.concatenate((a,a_mask,c,c_mask,b), axis = 1)
+  chunk_im = Image.fromarray((chunk * 255).astype(np.uint8))
+  #plt.imshow(chunk_im, interpolation='nearest')
+  #plt.show()
+  chunk_im.save('{}/{}/{}.png'.format(CHUNK_OUTPUT_FOLDER, folder, f'{image_index:05}'))
+
 # Function that splits files into folders based on parity of their index
 def split_even_odd(folder, image_index):
   source = '{}/{}/{}.png'.format(source_folder, folder, f'{image_index:05}')
@@ -118,12 +154,13 @@ if data_type == 1:
       print("Commencing on frame folder {}".format(folder))
       for i in range(1, todo+1):
           image2chunk(FRAME_OUTPUT_FOLDER, folder, i, frame_gap)
-      if i%50 == 0:
-          print("Processed {} out of {} on todo list".format(i, todo))
+          if i%50 == 0:
+              print("Processed {} out of {} on todo list".format(i, todo))
       print("Finished on frame folder {}".format(folder))
 elif data_type == 2:
   # This bit here iterates through the list of provided subfolders and performs the frame to chunk function on them, for 5 frame chunking
   for folder in folders:
+    print("{}/{}".format(Frame_Storage, folder))
     frame_count = len(list(glob.iglob("{}/{}/*.png".format(Frame_Storage, folder))))
     todo = frame_count - 4*frame_gap
     print("Commencing mega chunking on frame folder {}".format(folder))
@@ -150,6 +187,17 @@ elif data_type == 4:
     todo = frame_count - 2
     for i in range(1, todo+1):
       make_dain_set(i, folder)
+      if i%50 == 0:
+        print("Completed {} out of {}".format(i, todo))
+    print("Finished on folder {}".format(folder))
+elif data_type == 5:
+  # Creates datasets including masks (for the masquerade)
+  for folder in folders:
+    print("Beginning on folder {}".format(folder))
+    frame_count = len(list(glob.iglob("{}/{}/*.png".format(Frame_Storage, folder))))
+    todo = frame_count - 2
+    for i in range(1, todo+1):
+      mask_chunk(folder, i)
       if i%50 == 0:
         print("Completed {} out of {}".format(i, todo))
     print("Finished on folder {}".format(folder))
